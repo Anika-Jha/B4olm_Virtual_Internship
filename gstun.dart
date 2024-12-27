@@ -1,3 +1,15 @@
+/*
+NAT Detection with Dart
+This project uses Dart to detect the network setup of a device by listing all connected network interfaces, identifying their IP addresses (both IPv4 and IPv6), and determining if the device is behind a NAT. 
+It also retrieves the public IP address using the Google STUN server.
+
+Features
+Fetch All Network Interfaces: Lists all connected network interfaces and their IP addresses, including IPv4 and IPv6.
+Private vs Public IP Detection: Identifies whether an IP address is private (indicating NAT) or public.
+Public IP Retrieval: Uses the STUN protocol and Google's STUN server to fetch the public IP address.
+NAT Status Check: Determines whether the device is behind a NAT.
+*/
+
 import 'dart:io';
 import 'dart:typed_data';
 
