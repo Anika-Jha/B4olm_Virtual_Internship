@@ -19,17 +19,51 @@ class NetworkManager {
     try {
       var interfaces = await NetworkInterface.list(includeLinkLocal: true);
       print('Available Network Interfaces:');
+      bool ipv4Found = false; // Flag to track IPv4 addresses
+
       for (var interface in interfaces) {
         print('== Interface: ${interface.name} ==');
         for (var addr in interface.addresses) {
           String type = addr.type == InternetAddressType.IPv4 ? 'IPv4' : 'IPv6';
           bool isPrivate = isPrivateIP(addr.address);
+
+          // Print each address and mark whether it's public or private
           print('$type Address: ${addr.address} (${isPrivate ? "Private" : "Public"})');
+
+          if (addr.type == InternetAddressType.IPv4) {
+            ipv4Found = true;
+          }
         }
+      }
+
+      if (!ipv4Found) {
+        print('No IPv4 address found on the local device.');
       }
     } catch (e) {
       print('Error retrieving network interfaces: $e');
     }
+  }
+
+  // Retrieve local IPv4 and IPv6 addresses
+  Future<Map<String, String>> getLocalIPs() async {
+    Map<String, String> localIPs = {};
+
+    try {
+      var interfaces = await NetworkInterface.list(includeLinkLocal: true);
+      for (var interface in interfaces) {
+        for (var addr in interface.addresses) {
+          if (addr.type == InternetAddressType.IPv4) {
+            localIPs['IPv4'] = addr.address;
+          } else if (addr.type == InternetAddressType.IPv6) {
+            localIPs['IPv6'] = addr.address;
+          }
+        }
+      }
+    } catch (e) {
+      print('Error retrieving local IPs: $e');
+    }
+
+    return localIPs;
   }
 
   // Check if the given IP address is private (indicating NAT)
@@ -68,7 +102,7 @@ class NetworkManager {
       final stunMessage = Uint8List.fromList([
         0x00, 0x01, 0x00, 0x00,
         0x21, 0x12, 0xA4, 0x42,
-        ...transactionId, 
+        ...transactionId,
       ]);
 
       socket.send(stunMessage, stunServerAddress.first, stunPort);
@@ -107,34 +141,28 @@ class NetworkManager {
     }
   }
 
-  // Check if the device is behind a NAT
-  Future<bool> checkIfBehindNAT(String publicIP) async {
-    List<NetworkInterface> interfaces = await NetworkInterface.list();
-
-    for (var interface in interfaces) {
-      for (var address in interface.addresses) {
-        if (!isPrivateIP(address.address) && address.address == publicIP) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
   // Main function to check NAT status
   Future<void> checkNATStatus() async {
     await printNetworkInterfaces();
 
     String? publicIP = await getPublicIP('stun.l.google.com', 19302);
     if (publicIP != null) {
-      bool isBehindNAT = await checkIfBehindNAT(publicIP);
-      print(isBehindNAT
-          ? "The device is behind a NAT."
-          : "The device is not behind a NAT.");
+      print("Public IP: $publicIP");
     } else {
       print("Failed to determine public IP.");
     }
+
+    var localIPs = await getLocalIPs();
+    print('\nLocal IPs of the Device:');
+    localIPs.forEach((type, ip) {
+      print('$type: $ip');
+    });
   }
+}
+
+void main() async {
+  var networkManager = NetworkManager();
+  await networkManager.checkNATStatus();
 }
 
 void main() async {
