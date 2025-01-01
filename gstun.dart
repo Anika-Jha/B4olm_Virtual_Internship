@@ -14,7 +14,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 class NetworkManager {
-  // Retrieve and print all interfaces and their IP addresses
+  // Retrieve and print all interfaces and their IP addresses(all the interfaces printed)
   Future<void> printNetworkInterfaces() async {
     try {
       var interfaces = await NetworkInterface.list(includeLinkLocal: true);
