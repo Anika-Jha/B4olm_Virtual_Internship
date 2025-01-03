@@ -8,6 +8,8 @@ Fetch All Network Interfaces: Lists all connected network interfaces and their I
 Private vs Public IP Detection: Identifies whether an IP address is private (indicating NAT) or public.
 Public IP & Port Retrieval
 NAT Status Check: Determines whether the device is behind a NAT.
+
+This code is a Dart program that analyzes the network environment of the local device, determines its local and public IP addresses, and identifies the type of NAT (Network Address Translation) the device is behind.
 */
 
 import 'dart:io';
@@ -19,15 +21,13 @@ class NetworkManager {
     try {
       var interfaces = await NetworkInterface.list(includeLinkLocal: true);
       print('Available Network Interfaces:');
-      bool ipv4Found = false; // Flag to track IPv4 addresses
+      bool ipv4Found = false;
 
       for (var interface in interfaces) {
         print('== Interface: ${interface.name} ==');
         for (var addr in interface.addresses) {
           String type = addr.type == InternetAddressType.IPv4 ? 'IPv4' : 'IPv6';
           bool isPrivate = isPrivateIP(addr.address);
-
-          // Print each address and mark whether it's public or private
           print('$type Address: ${addr.address} (${isPrivate ? "Private" : "Public"})');
 
           if (addr.type == InternetAddressType.IPv4) {
@@ -45,6 +45,8 @@ class NetworkManager {
   }
 
   // Retrieve local IPv4 and IPv6 addresses
+  //it iterates over network interfaces
+  //Filters out IPv4 and IPv6 addresses and stores them in a map.
   Future<Map<String, String>> getLocalIPs() async {
     Map<String, String> localIPs = {};
 
@@ -67,6 +69,7 @@ class NetworkManager {
   }
 
   // Check if the given IP address is private (indicating NAT)
+  //Checks if the IP is private or public 
   bool isPrivateIP(String ip) {
     final privateRanges = [
       '10.', '172.', '192.168.', // Private IPv4 ranges
@@ -81,7 +84,7 @@ class NetworkManager {
     return false; // Public IP
   }
 
-  // Use Google STUN server to get the public IP address and port
+  // Use Google STUN server to get the public IP and port
   Future<Map<String, dynamic>?> getPublicIPAndPort(String stunServer, int stunPort) async {
     try {
       var stunServerAddress = (await InternetAddress.lookup(stunServer))
@@ -94,9 +97,6 @@ class NetworkManager {
       }
 
       final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-      print('Using local port: ${socket.port} to communicate with $stunServer:$stunPort');
-
-      // STUN binding request
       final transactionId = List<int>.generate(12, (i) => i);
       final stunMessage = Uint8List.fromList([
         0x00, 0x01, 0x00, 0x00,
@@ -105,10 +105,10 @@ class NetworkManager {
       ]);
 
       socket.send(stunMessage, stunServerAddress.first, stunPort);
-      print('STUN request sent to ${stunServerAddress.first}:$stunPort.');
 
-      String? publicIP;
-      int? publicPort;
+      //can be null also 
+      String? publicIP; //textual in nature
+      int? publicPort; //port nos. are integers
 
       await for (var event in socket) {
         if (event == RawSocketEvent.read) {
@@ -125,8 +125,6 @@ class NetworkManager {
                   response[31] ^ 0x42
                 ].join('.');
                 publicPort = ((response[26] & 0xFF) << 8) | (response[27] & 0xFF);
-                print('Public IP retrieved: $publicIP');
-                print('Public Port retrieved: $publicPort');
                 break;
               }
             }
@@ -139,6 +137,34 @@ class NetworkManager {
     } catch (e) {
       print('Error retrieving public IP via STUN: $e');
       return null;
+    }
+  }
+
+  // Define the type of NAT based on STUN server responses
+  //Makes two connections to the same STUN server and port and records the public IP and port for each connection.
+  Future<String> defineNATType(String stunServer, int stunPort) async {
+    try {
+      var connection1 = await getPublicIPAndPort(stunServer, stunPort);
+      if (connection1 == null) {
+        return "NAT Type: Unknown (Failed to retrieve public IP and port)";
+      }
+
+      var connection2 = await getPublicIPAndPort(stunServer, stunPort);
+      if (connection2 == null) {
+        return "NAT Type: Unknown (Failed to retrieve public IP and port)";
+      }
+
+      if (connection1['ip'] != connection2['ip']) {
+        return "NAT Type: Symmetric NAT (Public IP changes with each request)";
+      }
+
+      if (connection1['port'] != connection2['port']) {
+        return "NAT Type: Port-Restricted NAT (Public port changes with each request)";
+      }
+
+      return "NAT Type: Full Cone NAT (Public IP and port remain consistent)";
+    } catch (e) {
+      return "Error defining NAT type: $e";
     }
   }
 
@@ -159,6 +185,9 @@ class NetworkManager {
     localIPs.forEach((type, ip) {
       print('$type: $ip');
     });
+
+    var natType = await defineNATType('stun.l.google.com', 19302);
+    print('\n$natType');
   }
 }
 
@@ -166,4 +195,5 @@ void main() async {
   var networkManager = NetworkManager();
   await networkManager.checkNATStatus();
 }
+
 
