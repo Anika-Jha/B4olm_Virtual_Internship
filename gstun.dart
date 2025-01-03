@@ -6,7 +6,7 @@ It also retrieves the public IP address using the Google STUN server.
 Features
 Fetch All Network Interfaces: Lists all connected network interfaces and their IP addresses, including IPv4 and IPv6.
 Private vs Public IP Detection: Identifies whether an IP address is private (indicating NAT) or public.
-Public IP Retrieval: Uses the STUN protocol and Google's STUN server to fetch the public IP address.
+Public IP & Port Retrieval
 NAT Status Check: Determines whether the device is behind a NAT.
 */
 
@@ -14,7 +14,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 class NetworkManager {
-  // Retrieve and print all interfaces and their IP addresses(all the interfaces printed)
+  // Retrieve and print all interfaces and their IP addresses
   Future<void> printNetworkInterfaces() async {
     try {
       var interfaces = await NetworkInterface.list(includeLinkLocal: true);
@@ -81,10 +81,9 @@ class NetworkManager {
     return false; // Public IP
   }
 
-  // Use Google STUN server to get the public IP address
-  Future<String?> getPublicIP(String stunServer, int stunPort) async {
+  // Use Google STUN server to get the public IP address and port
+  Future<Map<String, dynamic>?> getPublicIPAndPort(String stunServer, int stunPort) async {
     try {
-      print('Using STUN protocol to fetch public IP...');
       var stunServerAddress = (await InternetAddress.lookup(stunServer))
           .where((addr) => addr.type == InternetAddressType.IPv4)
           .toList();
@@ -109,6 +108,7 @@ class NetworkManager {
       print('STUN request sent to ${stunServerAddress.first}:$stunPort.');
 
       String? publicIP;
+      int? publicPort;
 
       await for (var event in socket) {
         if (event == RawSocketEvent.read) {
@@ -118,14 +118,15 @@ class NetworkManager {
             if (response.length >= 28) {
               final addressFamily = response[25];
               if (addressFamily == 0x01) {
-                final ip = [
+                publicIP = [
                   response[28] ^ 0x21,
                   response[29] ^ 0x12,
                   response[30] ^ 0xA4,
                   response[31] ^ 0x42
                 ].join('.');
-                publicIP = ip;
-                print('Public IP retrieved: $ip');
+                publicPort = ((response[26] & 0xFF) << 8) | (response[27] & 0xFF);
+                print('Public IP retrieved: $publicIP');
+                print('Public Port retrieved: $publicPort');
                 break;
               }
             }
@@ -134,7 +135,7 @@ class NetworkManager {
       }
 
       socket.close();
-      return publicIP;
+      return {'ip': publicIP, 'port': publicPort};
     } catch (e) {
       print('Error retrieving public IP via STUN: $e');
       return null;
@@ -145,11 +146,12 @@ class NetworkManager {
   Future<void> checkNATStatus() async {
     await printNetworkInterfaces();
 
-    String? publicIP = await getPublicIP('stun.l.google.com', 19302);
-    if (publicIP != null) {
-      print("Public IP: $publicIP");
+    var connectionInfo = await getPublicIPAndPort('stun.l.google.com', 19302);
+    if (connectionInfo != null) {
+      print("Public IP: ${connectionInfo['ip']}");
+      print("Public Port: ${connectionInfo['port']}");
     } else {
-      print("Failed to determine public IP.");
+      print("Failed to determine public IP and port.");
     }
 
     var localIPs = await getLocalIPs();
@@ -165,7 +167,3 @@ void main() async {
   await networkManager.checkNATStatus();
 }
 
-void main() async {
-  var networkManager = NetworkManager();
-  await networkManager.checkNATStatus();
-}
