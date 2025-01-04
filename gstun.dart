@@ -8,6 +8,7 @@ Fetch All Network Interfaces: Lists all connected network interfaces and their I
 Private vs Public IP Detection: Identifies whether an IP address is private (indicating NAT) or public.
 Public IP & Port Retrieval
 NAT Status Check: Determines whether the device is behind a NAT.
+Determines the type of NAT the device is behind.
 
 This code is a Dart program that analyzes the network environment of the local device, determines its local and public IP addresses, and identifies the type of NAT (Network Address Translation) the device is behind.
 */
@@ -108,7 +109,7 @@ class NetworkManager {
 
       //can be null also 
       String? publicIP; //textual in nature
-      int? publicPort; //port nos. are integers
+      int? publicPort; //port nos. are integers(eg. port 80)
 
       await for (var event in socket) {
         if (event == RawSocketEvent.read) {
