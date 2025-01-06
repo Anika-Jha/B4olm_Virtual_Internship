@@ -109,7 +109,7 @@ class NetworkManager {
 
       //can be null also 
       String? publicIP; //textual in nature
-      int? publicPort; //port nos. are integers(eg. port 80)
+      int? publicPort; //port nos. are integers
 
       await for (var event in socket) {
         if (event == RawSocketEvent.read) {
@@ -144,30 +144,39 @@ class NetworkManager {
   // Define the type of NAT based on STUN server responses
   //Makes two connections to the same STUN server and port and records the public IP and port for each connection.
   Future<String> defineNATType(String stunServer, int stunPort) async {
-    try {
-      var connection1 = await getPublicIPAndPort(stunServer, stunPort);
-      if (connection1 == null) {
-        return "NAT Type: Unknown (Failed to retrieve public IP and port)";
-      }
-
-      var connection2 = await getPublicIPAndPort(stunServer, stunPort);
-      if (connection2 == null) {
-        return "NAT Type: Unknown (Failed to retrieve public IP and port)";
-      }
-
-      if (connection1['ip'] != connection2['ip']) {
-        return "NAT Type: Symmetric NAT (Public IP changes with each request)";
-      }
-
-      if (connection1['port'] != connection2['port']) {
-        return "NAT Type: Port-Restricted NAT (Public port changes with each request)";
-      }
-
-      return "NAT Type: Full Cone NAT (Public IP and port remain consistent)";
-    } catch (e) {
-      return "Error defining NAT type: $e";
+  try {
+    var connection1 = await getPublicIPAndPort(stunServer, stunPort);
+    if (connection1 == null) {
+      return "NAT Type: Unknown (Failed to retrieve public IP and port)";
     }
+
+    var connection2 = await getPublicIPAndPort(stunServer, stunPort);
+    if (connection2 == null) {
+      return "NAT Type: Unknown (Failed to retrieve public IP and port)";
+    }
+
+    // Symmetric NAT: Public IP or port changes with each request
+    if (connection1['ip'] != connection2['ip'] && connection1['port'] != connection2['port']) {
+      return "NAT Type: Symmetric NAT";
+    }
+
+    // Port-Restricted NAT: Public IP is the same, but port changes for different destinations
+    if (connection1['ip'] == connection2['ip'] || connection1['port'] != connection2['port']) {
+      return "NAT Type: Port-Restricted NAT";
+    }
+
+    // Address-Restricted NAT: Public IP remains the same, but only specific destination ports can be used
+    if (connection1['ip'] == connection2['ip'] && connection1['port'] == connection2['port']) {
+      return "NAT Type: Address-Restricted NAT";
+    }
+
+    // Full Cone NAT: Public IP and port remain consistent
+    return "NAT Type: Full Cone NAT";
+  } catch (e) {
+    return "Error defining NAT type: $e";
   }
+}
+
 
   // Main function to check NAT status
   Future<void> checkNATStatus() async {
@@ -196,5 +205,3 @@ void main() async {
   var networkManager = NetworkManager();
   await networkManager.checkNATStatus();
 }
-
-
