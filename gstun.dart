@@ -157,21 +157,21 @@ class NetworkManager {
 
     // Symmetric NAT: Public IP or port changes with each request
     if (connection1['ip'] != connection2['ip'] && connection1['port'] != connection2['port']) {
-      return "NAT Type: Symmetric NAT";
+      return "NAT Type: NAT 4"; //Symmetric NAT
     }
 
     // Port-Restricted NAT: Public IP is the same, but port changes for different destinations
     if (connection1['ip'] == connection2['ip'] || connection1['port'] != connection2['port']) {
-      return "NAT Type: Port-Restricted NAT";
+      return "NAT Type: NAT 3"; //Port-Restricted NAT
     }
 
     // Address-Restricted NAT: Public IP remains the same, but only specific destination ports can be used
     if (connection1['ip'] == connection2['ip'] && connection1['port'] == connection2['port']) {
-      return "NAT Type: Address-Restricted NAT";
+      return "NAT Type: NAT 2"; //Address-Restricted NAT
     }
 
     // Full Cone NAT: Public IP and port remain consistent
-    return "NAT Type: Full Cone NAT";
+    return "NAT Type: NAT 1"; //Full Cone NAT
   } catch (e) {
     return "Error defining NAT type: $e";
   }
