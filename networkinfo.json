@@ -1,0 +1,27 @@
+
+
+
+
+{
+    "Active Interfaces": [
+      {
+        "Type": "IPv4",
+        "Address": "10.88.0.4",
+        "Private": true,
+        "Public IP": "35.247.176.120",
+        "Public Port": 43754,
+        "NATed": 1,
+        "NAT Type": "Full Cone NAT"
+      },
+      {
+        "Type": "IPv4",
+        "Address": "172.17.0.1",
+        "Private": true,
+        "Public IP": "35.247.176.120",
+        "Public Port": 35845,
+        "NATed": 1,
+        "NAT Type": "Full Cone NAT"
+      }
+    ]
+  }
+  
