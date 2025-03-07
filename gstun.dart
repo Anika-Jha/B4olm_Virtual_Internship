@@ -10,7 +10,7 @@ Public IP & Port Retrieval
 NAT Status Check: Determines whether the device is behind a NAT.
 Determines the type of NAT the device is behind.
 
-This code is a Dart program that analyzes the network environment of the local device, determines its local and public IP addresses, and identifies the type of NAT (Network Address Translation) the device is behind.
+
 */
 
 import 'dart:io';
